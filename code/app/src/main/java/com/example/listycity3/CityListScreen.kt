@@ -25,9 +25,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+
 @Composable
 fun CityListScreen(
     cities: List<City>,
+    onUpdateCity: (City,City)-> Unit,
     onAddCity: (City) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -35,6 +41,8 @@ fun CityListScreen(
     var newProvinceName by remember { mutableStateOf("") }
     var showAddCityFields by remember { mutableStateOf(false) }
     var selectedCity by remember { mutableStateOf<City?>(null) }
+    var editFields by remember { mutableStateOf(false) }
+    val context = LocalContext.current //popup aftr editing city and province
 
     Column(modifier = modifier.fillMaxSize()) {
         Row(
@@ -91,24 +99,76 @@ fun CityListScreen(
             }
         }
 
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                itemsIndexed(cities) { index, city ->
+                    CityRow(
+                        city = city,
+                        onClick = {
+                            selectedCity = city
+                            newCityName = city.name
+                            newProvinceName = city.province
+                        },isSelected = selectedCity == city,
+                        onEdit = {
+                            editFields = true
+                        }
+                    )
+                    if (editFields && selectedCity==city) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        )
+                        {OutlinedTextField(value = newCityName,
+                            onValueChange = {newCityName=it},
+                            label = {Text("City")},
+                            modifier= Modifier.weight(1f)
+                        )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedTextField(value = newProvinceName,
+                                onValueChange = {newProvinceName=it},
+                                label = {Text("Province")},
+                                modifier= Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(onClick = {
+                                if (newCityName.isNotBlank() && newProvinceName.isNotBlank()) {
+                                    val updatedCity = City(name = newCityName, province = newProvinceName)
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            itemsIndexed(cities) { index, city ->
-                CityRow(city = city)
-                if (index < cities.lastIndex) {
-                    HorizontalDivider()
+                                    onUpdateCity(selectedCity!!, updatedCity)  //selectedcity is not null so !!
+                                    Toast.makeText(
+                                        context,
+                                        "City & Province edited successfully!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    selectedCity = null
+                                    editFields = false
+                                }
+
+                            }) {
+                                Text("Edit City and Province")
+                            }
+
+                        }
+                    }
+                    if (index < cities.lastIndex) {
+                        HorizontalDivider()
+                    }
                 }
             }
         }
     }
-}
+
 
 @Composable
-fun CityRow(city: City) {
+fun CityRow(city: City, onClick:()-> Unit, isSelected: Boolean,onEdit: () -> Unit) {
     Row(
         modifier = Modifier
+
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 16.dp)
+            .clickable {
+                onClick()
+            }
     ) {
         Text(
             text = city.name,
@@ -121,6 +181,15 @@ fun CityRow(city: City) {
             fontSize = 30.sp,
             modifier = Modifier.weight(1f)
         )
+        if (isSelected) {
+            Button(
+                onClick = {
+                    onEdit()
+                }
+            ) {
+                Text("EDIT")
+            }
+        }
     }
 }
 
@@ -134,7 +203,8 @@ fun CityListScreenPreview() {
                 City("Vancouver", "BC"),
                 City("Calgary", "AB")
             ),
-            onAddCity = {}
+            onAddCity = {},
+            onUpdateCity= {_,_->}
         )
     }
 }
